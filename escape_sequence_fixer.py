@@ -1,8 +1,6 @@
 import argparse
-import ast
 import difflib
 import sys
-import warnings
 
 from io import BytesIO
 from tokenize import tokenize, STRING
@@ -42,7 +40,7 @@ def has_invalid_escape_sequence(text):
     quote_pos = text.index(quote)
     prefix = text[:quote_pos].lower()
     start = quote_pos + len(quote)
-    string = text[start : -len(quote)]
+    string = text[start:-len(quote)]
 
     if "r" not in prefix:
         pos = string.find("\\")
