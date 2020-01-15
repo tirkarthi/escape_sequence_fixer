@@ -10,9 +10,10 @@ from tokenize import tokenize, STRING
 
 def has_invalid_escape_sequence(string):
     # There is a better way but this is much simpler
+    # https://github.com/PyCQA/pycodestyle/blob/d219c684f117be77927d33146e76a5364161e518/pycodestyle.py#L1560
     with warnings.catch_warnings(record=True) as w:
         warnings.filterwarnings("always", category=DeprecationWarning)
-        ast.literal_eval(string)
+        compile(string, "<stdin>", "exec")
         return any("invalid escape" in str(warning.message) for warning in w)
 
 
