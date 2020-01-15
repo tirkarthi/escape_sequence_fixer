@@ -8,13 +8,50 @@ from io import BytesIO
 from tokenize import tokenize, STRING
 
 
-def has_invalid_escape_sequence(string):
-    # There is a better way but this is much simpler
-    # https://github.com/PyCQA/pycodestyle/blob/d219c684f117be77927d33146e76a5364161e518/pycodestyle.py#L1560
-    with warnings.catch_warnings(record=True) as w:
-        warnings.filterwarnings("always", category=DeprecationWarning)
-        compile(string, "<stdin>", "exec")
-        return any("invalid escape" in str(warning.message) for warning in w)
+def has_invalid_escape_sequence(text):
+    # Adapted from https://github.com/PyCQA/pycodestyle/blob/d219c684f117be77927d33146e76a5364161e518/pycodestyle.py#L1560
+    valid = [
+        "\n",
+        "\\",
+        "'",
+        '"',
+        "a",
+        "b",
+        "f",
+        "n",
+        "r",
+        "t",
+        "v",
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "x",
+        # Escape sequences only recognized in string literals
+        "N",
+        "u",
+        "U",
+    ]
+
+    quote = text[-3:] if text[-3:] in ('"""', "'''") else text[-1]
+    # Extract string modifiers (e.g. u or r)
+    quote_pos = text.index(quote)
+    prefix = text[:quote_pos].lower()
+    start = quote_pos + len(quote)
+    string = text[start : -len(quote)]
+
+    if "r" not in prefix:
+        pos = string.find("\\")
+        while pos >= 0:
+            pos += 1
+            if string[pos] not in valid:
+                return True
+            else:
+                pos = string.find("\\", pos + 1)
 
 
 def add_raw_string_prefix(start_index, line):
@@ -28,12 +65,11 @@ def process_file(fileobj):
     tokens = tokenize(BytesIO(source.encode("utf-8")).readline)
     for toknum, tokval, start_index, end_index, line in tokens:
         if toknum == STRING:
-            start_lineno, start = start_index
-            end_lineno, end = end_index
-            string = tokval
-            if has_invalid_escape_sequence(string):
+            start_line, start = start_index
+            end_line, end = end_index
+            if has_invalid_escape_sequence(tokval):
                 line = add_raw_string_prefix(start, line)
-                line_numbers = slice(start_lineno - 1, end_lineno)
+                line_numbers = slice(start_line - 1, end_line)
                 expected_lines[line_numbers] = line.splitlines(keepends=True)
 
     return actual_lines, expected_lines
