@@ -60,15 +60,36 @@ def process_file(fileobj):
     source = fileobj.read()
     actual_lines = source.splitlines(keepends=True)
     expected_lines = source.splitlines(keepends=True)
+    previous_line_indices = (None, None)
+    prefix_count = 0
     tokens = tokenize(BytesIO(source.encode("utf-8")).readline)
     for toknum, tokval, start_index, end_index, line in tokens:
         if toknum == STRING:
             start_line, start = start_index
             end_line, end = end_index
             if has_invalid_escape_sequence(tokval):
-                line = add_raw_string_prefix(start, line)
+                # If we found a escape sequence for a string token on the same
+                # line as last replacement then use the previous string which
+                # has the fix. Since the previous string has r added then increment
+                # start by 1. For multiple occurrences keep using the string and increment
+                # prefix count. Once we reach next line then reset the prefix counter for next
+                # iteration of fixes.
+                # "\d" + "\d" + "\d"
+                # previous_line = r"\d" + "\d" + "\d", prefix_count = 1
+                # previous_line = r"\d" + r"\d" + "\d", prefix_count = 2
+                # previous_line = r"\d" + r"\d" + r"\d", prefix_count = 3
+
+                if (start_line, end_line) == previous_line_indices:
+                    line = previous_line
+                    prefix_count += 1
+                else:
+                    prefix_count = 0
+
+                line = add_raw_string_prefix(start + prefix_count, line)
                 line_numbers = slice(start_line - 1, end_line)
                 expected_lines[line_numbers] = line.splitlines(keepends=True)
+                previous_line = line
+                previous_line_indices = (start_line, end_line)
 
     return actual_lines, expected_lines
 

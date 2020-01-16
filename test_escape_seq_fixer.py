@@ -7,9 +7,10 @@ from escape_sequence_fixer import process_file
 class TestFixer(unittest.TestCase):
     def test_cases(self):
         cases = [
-            (r"a = '\d'", ["a = r'\\d'"]),
-            (r"a = u'\d'", ["a = ru'\\d'"]),
-            (r"a = r'\d'", ["a = r'\\d'"]),
+            (r"a = '\d'", ["a = r'\d'"]),
+            (r"a = u'\d'", ["a = ru'\d'"]),
+            (r"a = '\d' + '\d' + '\d'", ["a = r'\d' + r'\d' + r'\d'"]),
+            (r"a = r'\d'", ["a = r'\d'"]),
         ]
 
         for code, expected in cases:
